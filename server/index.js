@@ -89,6 +89,7 @@ app.get('/api/gifts', async (req, res) => {
 
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
+wss.on('error', () => { /* port hatası server 'error' olayında ele alınır */ });
 
 function broadcast(msg, except) {
   const data = JSON.stringify(msg);
