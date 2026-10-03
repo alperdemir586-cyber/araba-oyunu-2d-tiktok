@@ -18,10 +18,7 @@ export class Terrain {
     this.chunks = new Map();
     this.extraBodies = []; // rampa vb. sonradan eklenen statik gövdeler
     this.groundImages = {};
-    // Başlangıç duvarı
-    const wall = world.createBody({ type: 'static' });
-    wall.createFixture(new planck.Edge(planck.Vec2(-6, -200), planck.Vec2(-6, 300)), { friction: 0.2 });
-    wall.setUserData({ kind: 'ground' });
+    // Başlangıç duvarı yok: geriye (-hedef ve ötesine) sınırsız gidilebilir
   }
 
   mapAt(x) {
@@ -41,10 +38,11 @@ export class Terrain {
   }
 
   heightAt(x) {
-    const flat = smooth((x - 12) / 45);
+    // 0 noktası çevresi düz başlangıç alanı; iki yöne de uzaklaştıkça zorlaşır
+    const flat = smooth((Math.abs(x) - 12) / 45);
     if (flat <= 0) return 0;
     const p = this.params(x);
-    const diff = 1 + Math.min(1, Math.max(0, x) / Math.max(200, this.target)) * 0.6 * this.growth;
+    const diff = 1 + Math.min(1, Math.abs(x) / Math.max(200, this.target)) * 0.6 * this.growth;
     const s = this.seed;
     const h = noise1(x / 48, s) * 8.5
       + noise1(x / 19, s + 1) * 3.2 * p.rough
@@ -83,7 +81,7 @@ export class Terrain {
     for (let k = Math.ceil(x0 / 3); k < (x0 + CHUNK) / 3; k++) {
       const dx = k * 3 + hash(k * 1.7 + this.seed) * 2;
       const m = MAPS[this.mapAt(dx)];
-      if (dx < 8 || hash(k * 9.1 + this.seed) > m.decoDensity) continue;
+      if (Math.abs(dx) < 8 || hash(k * 9.1 + this.seed) > m.decoDensity) continue;
       const type = m.deco[Math.floor(hash(k * 4.3) * m.deco.length)];
       decos.push({ x: dx, y: this.heightAt(dx), type, v: hash(k * 2.9) });
     }
@@ -92,7 +90,7 @@ export class Terrain {
 
   update(minX, maxX) {
     const a = Math.floor(minX / CHUNK), b = Math.floor(maxX / CHUNK);
-    for (let i = Math.max(-1, a); i <= b; i++) if (!this.chunks.has(i)) this.buildChunk(i);
+    for (let i = a; i <= b; i++) if (!this.chunks.has(i)) this.buildChunk(i);
     for (const [i, ch] of this.chunks) {
       if (i < a - 3 || i > b + 3) { this.world.destroyBody(ch.body); this.chunks.delete(i); }
     }

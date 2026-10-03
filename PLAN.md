@@ -41,6 +41,13 @@ TikTok LIVE ──► server/tiktok.js ──► WebSocket ──► Oyun (taray
 | Geri fırlatma (bomba, takla ile X m) | ✅ | Bomba/füze/hortum: tam ayarlanan mesafe kadar, takla atarak |
 | Yayıncı paneli: durdurma, kural değiştirme, test | ✅ | |
 | Stres testi | ✅ | Panelde hazır senaryolar; 150+ olayda 60 FPS ölçüldü |
+| Klavyeyle sürüş | ✅ | → gaz, ← geri, ↑/↓ eğilme; istenirse otomatik sürüş |
+| TikFinity üzerinden canlı bağlantı | ✅ | Yerel WebSocket API, otomatik bağlanma; webhook ile tetikleme |
+| ±hedef kazanma/kaybetme, 15 sn geri sayımlar, skor | ✅ | −hedefin gerisi sınırsız; skor tarayıcıda saklanır |
+| Aynı eylemlerin birleşmesi, elmasa göre öncelik | ✅ | |
+| 3 sn ters kalınca düzelme | ✅ | Ayarlanabilir |
+| Büyük hediye → profil fotoğrafı yolcu koltuğunda 30 sn | ✅ | Elmas sınırı ve süre ayarlanabilir |
+| Hareket halinde net görüntü | ✅ | Fizik kare süresine göre alt adımlarla; 144 Hz'de titreme ~4.4 px → 0 |
 | Fizik hatalarının giderilmesi | ✅ | Ters dönünce otomatik düzelme, takılınca itme, havada denge, `npm run check` |
 | Kaliteli 2D sürücü, açık araçlarda görünür, sarsıntıya tepki | ✅ | Yay-sönümleyici kafa/gövde, göz kırpma, ruh hali ifadeleri, dalgalanan atkı |
 

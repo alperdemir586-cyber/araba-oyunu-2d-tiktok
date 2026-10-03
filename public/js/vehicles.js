@@ -1,3 +1,5 @@
+import { drawPassenger } from './driver.js';
+
 // Araç tanımları (fizik + çizim). Tüm ölçüler metre, y yukarı, orijin şasi merkezi.
 // openTop: true olan araçlarda sürücü tamamen görünür; kapalı araçlarda cam arkasından.
 
@@ -80,7 +82,7 @@ export const VEHICLES = {
     chassis: [[-1.75, -0.32], [1.75, -0.32], [1.8, 0.2], [0.75, 0.32], [-1.75, 0.38]],
     density: 1.1,
     wheels: [{ x: -1.15, y: -0.6, r: 0.5, drive: true }, { x: 1.2, y: -0.6, r: 0.5, drive: true }],
-    hz: 4.2, damping: 0.7, torque: 0.9, speed: 1, seat: [-0.35, 0.28], steer: [0.2, 0.7], driverScale: 1,
+    hz: 4.2, damping: 0.7, torque: 0.9, speed: 1, seat: [-0.35, 0.28], steer: [0.2, 0.7], driverScale: 1, passenger: [-0.95, 0.3],
     back(ctx, v) {
       ctx.strokeStyle = '#333'; ctx.lineWidth = 0.09; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(-1.35, 0.35); ctx.lineTo(-1.15, 1.35); ctx.lineTo(-0.55, 1.35); ctx.lineTo(-0.45, 0.35); ctx.stroke();
@@ -112,7 +114,7 @@ export const VEHICLES = {
     chassis: [[-2.0, -0.25], [2.05, -0.25], [2.1, 0.05], [0.9, 0.3], [-0.1, 0.65], [-1.3, 0.6], [-2.0, 0.25]],
     density: 0.9,
     wheels: [{ x: -1.3, y: -0.38, r: 0.4, drive: true }, { x: 1.35, y: -0.38, r: 0.4, drive: false }],
-    hz: 5, damping: 0.75, torque: 0.75, speed: 1.35, seat: [-0.5, -0.17], steer: [-0.02, 0.2], driverScale: 0.8,
+    hz: 5, damping: 0.75, torque: 0.75, speed: 1.35, seat: [-0.45, -0.17], steer: [0.03, 0.2], driverScale: 0.8, passenger: [-0.9, -0.17],
     back(ctx) {
       poly(ctx, [[-1.3, 0.3], [0.85, 0.3], [-0.12, 0.66], [-1.25, 0.62]], 'rgba(20,24,40,0.85)', null);
     },
@@ -135,7 +137,7 @@ export const VEHICLES = {
     chassis: [[-1.7, -0.2], [1.7, -0.2], [1.75, 0.45], [0.55, 0.5], [0.3, 1.25], [-0.9, 1.25], [-1.0, 0.5], [-1.7, 0.5]],
     density: 0.9,
     wheels: [{ x: -1.25, y: -0.75, r: 0.88, drive: true }, { x: 1.25, y: -0.75, r: 0.88, drive: true }],
-    hz: 2.8, damping: 0.55, torque: 1.0, speed: 0.95, seat: [-0.35, 0.23], steer: [0.1, 0.58], driverScale: 1,
+    hz: 2.8, damping: 0.55, torque: 1.0, speed: 0.95, seat: [-0.2, 0.23], steer: [0.2, 0.58], driverScale: 1, passenger: [-0.65, 0.23],
     back(ctx) {
       ctx.strokeStyle = '#555'; ctx.lineWidth = 0.1;
       ctx.beginPath(); ctx.moveTo(-1.2, -0.2); ctx.lineTo(-1.25, -0.75); ctx.moveTo(1.2, -0.2); ctx.lineTo(1.25, -0.75); ctx.stroke();
@@ -163,7 +165,7 @@ export const VEHICLES = {
     chassis: [[-1.35, -0.2], [1.4, -0.2], [1.45, 0.15], [-1.35, 0.25]],
     density: 0.75,
     wheels: [{ x: -1.0, y: -0.55, r: 0.52, drive: true }, { x: 1.05, y: -0.55, r: 0.48, drive: true }],
-    hz: 3.2, damping: 0.45, torque: 0.85, speed: 1.15, seat: [-0.3, 0.2], steer: [0.2, 0.55], driverScale: 1,
+    hz: 3.2, damping: 0.45, torque: 0.85, speed: 1.15, seat: [-0.3, 0.2], steer: [0.2, 0.55], driverScale: 1, passenger: [-0.85, 0.2],
     back(ctx) {
       ctx.strokeStyle = '#ffb300'; ctx.lineWidth = 0.08; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       ctx.beginPath(); ctx.moveTo(-1.1, 0.2); ctx.lineTo(-0.85, 1.3); ctx.lineTo(0.15, 1.3); ctx.lineTo(0.8, 0.2); ctx.stroke();
@@ -186,7 +188,7 @@ export const VEHICLES = {
     chassis: [[-1.2, -0.2], [1.6, -0.2], [1.6, 0.45], [0.3, 0.5], [-1.2, 0.5]],
     density: 3,
     wheels: [{ x: -0.8, y: -0.35, r: 0.88, drive: true }, { x: 1.25, y: -0.65, r: 0.46, drive: true }],
-    hz: 4, damping: 0.7, torque: 1.1, speed: 0.75, seat: [-0.65, 0.55], steer: [-0.15, 0.95], driverScale: 1,
+    hz: 4, damping: 0.7, torque: 1.1, speed: 0.75, seat: [-0.65, 0.55], steer: [-0.15, 0.95], driverScale: 1, passenger: [-1.0, 0.55],
     back(ctx) {
       ctx.strokeStyle = '#333'; ctx.lineWidth = 0.07;
       ctx.beginPath(); ctx.moveTo(-1.15, 0.5); ctx.lineTo(-1.15, 1.85); ctx.moveTo(0.1, 0.5); ctx.lineTo(0.1, 1.85); ctx.stroke();
@@ -213,7 +215,7 @@ export const VEHICLES = {
       { x: -2.0, y: -0.6, r: 0.5, drive: true }, { x: -0.95, y: -0.6, r: 0.5, drive: true },
       { x: 1.65, y: -0.6, r: 0.5, drive: false },
     ],
-    hz: 4.5, damping: 0.8, torque: 0.8, speed: 0.85, seat: [0.7, 0.27], steer: [1.1, 0.58], driverScale: 0.95,
+    hz: 4.5, damping: 0.8, torque: 0.8, speed: 0.85, seat: [0.95, 0.27], steer: [1.35, 0.58], driverScale: 0.95, passenger: [0.5, 0.27],
     back(ctx) {
       rrect(ctx, 0.3, 0.6, 1.4, 0.7, 0.08, 'rgba(20,24,40,0.85)', null);
     },
@@ -235,7 +237,7 @@ export const VEHICLES = {
     chassis: [[-1.0, -0.12], [1.05, -0.12], [1.1, 0.08], [-1.0, 0.12]],
     density: 3.2,
     wheels: [{ x: -0.75, y: -0.28, r: 0.32, drive: true }, { x: 0.8, y: -0.3, r: 0.3, drive: false }],
-    hz: 6, damping: 0.8, torque: 0.8, speed: 1.4, seat: [-0.3, 0.02], steer: [0.2, 0.35], driverScale: 0.95,
+    hz: 6, damping: 0.8, torque: 0.8, speed: 1.4, seat: [-0.3, 0.02], steer: [0.2, 0.35], driverScale: 0.95, passenger: [-0.85, 0.05],
     back(ctx) {
       rrect(ctx, -0.7, -0.05, 0.25, 0.6, 0.08, '#222');
     },
@@ -269,6 +271,7 @@ export function makeCustomVehicle(id, c, image, wheelImage) {
     seat: [-w / 2 + (c.seatX ?? 0.45) * w, -h / 2 + (c.seatY ?? 0.45) * h],
     steer: [-w / 2 + (c.seatX ?? 0.45) * w + 0.6, -h / 2 + (c.seatY ?? 0.45) * h + 0.4],
     driverScale: c.driverScale || 1,
+    passenger: [-w / 2 + ((c.seatX ?? 0.45) - 0.13) * w, -h / 2 + (c.seatY ?? 0.45) * h],
     hideWheels: !!c.hideWheels,
     wheelImage,
     back() {},
@@ -473,7 +476,9 @@ export class Vehicle {
     ctx.scale(cam.ppm * s, -cam.ppm * s);
     // Katman düzeni: arka parçalar -> sürücü -> gövde -> (tekerlekler ayrıca)
     d.back(ctx, v, time);
-    if (driver && !(d.custom && !d.openTop)) driver.draw(ctx, d, time, opts);
+    const showPeople = !(d.custom && !d.openTop);
+    if (showPeople && opts.passenger && driver) drawPassenger(ctx, d, opts.passenger, driver, time);
+    if (driver && showPeople) driver.draw(ctx, d, time, opts);
     if (opts.shieldFlash) ctx.globalAlpha = 0.7;
     d.front(ctx, v, time);
     ctx.globalAlpha = 1;
@@ -514,8 +519,9 @@ export class Vehicle {
     }
     ctx.fillStyle = '#1d1d1f';
     ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
-    // diş izleri
-    ctx.fillStyle = '#2e2e32';
+    // diş izleri (hızlıyken bulanık görünmesin diye soluklaşır)
+    const tspin = Math.abs(w.body.getAngularVelocity());
+    ctx.fillStyle = tspin > 10 ? '#252528' : '#2e2e32';
     const teeth = Math.max(10, Math.round(r / 4));
     for (let k = 0; k < teeth; k++) {
       const an = (k / teeth) * Math.PI * 2;
@@ -529,11 +535,25 @@ export class Vehicle {
     rg.addColorStop(0, '#f2f4f7'); rg.addColorStop(1, '#8d95a1');
     ctx.fillStyle = rg;
     ctx.beginPath(); ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2); ctx.fill();
+    // Hızlı dönerken jant çubukları kare kare atlayıp titrek görünür; bunun yerine
+    // hareket bulanıklığı (dairesel iz) çizilir.
+    const spin = Math.abs(w.body.getAngularVelocity());
+    const blur = Math.min(1, Math.max(0, (spin - 6) / 10));
     ctx.strokeStyle = '#5b626d'; ctx.lineWidth = Math.max(1, r * 0.09);
+    ctx.globalAlpha = 1 - blur * 0.85;
     for (let k = 0; k < 5; k++) {
       const an = (k / 5) * Math.PI * 2;
       ctx.beginPath(); ctx.moveTo(Math.cos(an) * r * 0.12, Math.sin(an) * r * 0.12);
       ctx.lineTo(Math.cos(an) * r * 0.5, Math.sin(an) * r * 0.5); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    if (blur > 0) {
+      ctx.strokeStyle = `rgba(91,98,109,${0.55 * blur})`;
+      ctx.lineWidth = r * 0.22;
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.32, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = `rgba(60,60,66,${0.5 * blur})`;
+      ctx.lineWidth = r * 0.08;
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.88, 0, Math.PI * 2); ctx.stroke();
     }
     ctx.fillStyle = this.color;
     ctx.beginPath(); ctx.arc(0, 0, r * 0.14, 0, Math.PI * 2); ctx.fill();

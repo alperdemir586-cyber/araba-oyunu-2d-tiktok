@@ -47,7 +47,7 @@ export class Hazards {
     const s = this.game.settings;
     if (s.fuelCanEvery > 0) {
       for (let k = Math.ceil(fromX / s.fuelCanEvery); k * s.fuelCanEvery < toX; k++) {
-        if (k < 1) continue;
+        if (k === 0) continue;
         const key = 'f' + k;
         if (this.usedNatural.has(key)) continue;
         this.usedNatural.add(key);
@@ -56,7 +56,7 @@ export class Hazards {
     }
     if (s.randomHazards && s.hazardEvery > 0) {
       for (let k = Math.ceil(fromX / s.hazardEvery); k * s.hazardEvery < toX; k++) {
-        if (k < 1) continue;
+        if (k === 0) continue;
         const key = 'h' + k;
         if (this.usedNatural.has(key)) continue;
         this.usedNatural.add(key);
@@ -122,7 +122,7 @@ export class Hazards {
     for (let i = this.items.length - 1; i >= 0; i--) {
       const it = this.items[i];
       it.t += dt;
-      if (it.x < v.pos.x - 60 || it.done) {
+      if (Math.abs(it.x - v.pos.x) > 90 || it.done) {
         if (it.body) g.world.destroyBody(it.body);
         this.items.splice(i, 1);
         continue;

@@ -49,9 +49,18 @@ if (new URLSearchParams(location.search).has('embedded')) {
 // ---------------- Kontrol ----------------
 function renderStatus(st) {
   const el = $('#tt-status');
-  el.textContent = st.connected ? `● Bağlı: @${st.username}` : st.error || 'Bağlı değil';
+  const src = st.source === 'tiktok' ? 'TikTok' : 'TikFinity';
+  el.textContent = st.connected ? `● ${src} bağlı${st.username ? ': @' + st.username : ''}` : `${src}: ${st.error || 'Bağlı değil'}`;
   el.className = st.connected ? 'ok' : 'muted';
 }
+
+function updateSourceUi() {
+  const tf = $('#live-source').value === 'tikfinity';
+  $('#tf-url').hidden = !tf;
+  $('#tt-user').hidden = tf;
+}
+$('#live-source').addEventListener('change', updateSourceUi);
+$('#hook-url').textContent = `${location.origin}/api/trigger?action=nitro&user={nickname}`;
 
 const ACTION_NAME = (a) => `${ACTIONS[a]?.icon || ''} ${ACTIONS[a]?.name || a}`;
 function renderState(s) {
@@ -64,18 +73,26 @@ function renderState(s) {
     <div>🗺️ ${esc(MAPS[s.map]?.name || s.map)}</div>
     <div>⏱ ${fmt(s.elapsed)} · Tur ${s.round}</div>
     <div>📋 Kuyruk: ${s.queueLength}${s.dropped ? ` (düşen: ${s.dropped})` : ''}</div>
-    <div>🛡️ ${s.shield}</div>`;
+    <div>🛡️ ${s.shield}</div>
+    <div>🏆 ${s.score?.wins ?? 0} · 💀 ${s.score?.losses ?? 0}</div>
+    ${s.countdown ? `<div>${s.countdown.type === 'win' ? '🏁 Kazanmaya' : '💀 Kaybetmeye'} ${Math.ceil(s.countdown.t)} sn</div>` : ''}
+    ${s.passenger ? `<div>💺 ${esc(s.passenger)}</div>` : ''}`;
   $('#queue-list').innerHTML = s.queue.map((q) => `<li>${ACTION_NAME(q.action)}${q.count > 1 ? ' x' + q.count : ''} <span class="muted">${esc(q.user)}</span></li>`).join('') || '<li class="muted">Boş</li>';
 }
 
 $('#tt-connect').addEventListener('click', () => {
-  const u = $('#tt-user').value.trim();
-  if (!u) return;
-  config.settings.tiktokUsername = u;
+  const source = $('#live-source').value;
+  const url = $('#tf-url').value.trim() || 'ws://localhost:21213/';
+  const username = $('#tt-user').value.trim();
+  if (source === 'tiktok' && !username) return;
+  Object.assign(config.settings, { liveSource: source, tikfinityUrl: url, tiktokUsername: username });
   save();
-  net.send({ type: 'tiktok-connect', username: u });
+  net.send({ type: 'live-connect', source, url, username });
 });
-$('#tt-disconnect').addEventListener('click', () => net.send({ type: 'tiktok-disconnect' }));
+$('#tt-disconnect').addEventListener('click', () => net.send({ type: 'live-disconnect' }));
+$('#reset-score').addEventListener('click', () => {
+  if (confirm('Kazanma/kaybetme skoru sıfırlansın mı?')) net.send({ type: 'cmd', cmd: 'resetScore' });
+});
 $$('[data-cmd]').forEach((b) => b.addEventListener('click', () => net.send({ type: 'cmd', cmd: b.dataset.cmd })));
 $('#fill-fuel').addEventListener('click', () => net.send({ type: 'cmd', cmd: 'fuel', value: 100 }));
 
@@ -276,14 +293,22 @@ const vehicleOpts = () => [...Object.entries(VEHICLES).map(([k, v]) => [k, v.nam
 const mapOpts = () => Object.entries(MAPS).map(([k, m]) => [k, m.name]);
 
 const SETTING_DEFS = [
+  ['Sürüş'],
+  ['controlMode', 'Araç kontrolü', 'select', [['keyboard', 'Klavye (yayıncı sürer)'], ['auto', 'Otomatik (araç kendi gider)']]],
+  ['flipRecoverSeconds', 'Ters kalınca kendiliğinden düzelme (sn)', 'number', { min: 0.5, step: 0.5 }],
   ['Hedef ve ilerleme'],
-  ['targetMeters', 'Hedef mesafe (m)', 'number', { min: 50, step: 50 }],
+  ['targetMeters', 'Kazanma mesafesi (m) — geride aynı mesafe kaybetme sınırı', 'number', { min: 50, step: 50 }],
+  ['winCountdown', 'Kazanma geri sayımı (sn)', 'number', { min: 1 }],
+  ['loseCountdown', 'Kaybetme geri sayımı (sn)', 'number', { min: 1 }],
   ['cruiseSpeed', 'Normal hız (m/sn)', 'number', { min: 1, max: 30, step: 0.5 }],
   ['difficulty', 'Yokuş zorluğu (0–3)', 'number', { min: 0, max: 3, step: 0.1 }],
   ['startVehicle', 'Başlangıç aracı', 'select', vehicleOpts],
   ['startMap', 'Başlangıç haritası', 'select', mapOpts],
   ['autoMapEvery', 'Her N metrede harita değişsin (0 = kapalı)', 'number', { min: 0, step: 50 }],
-  ['autoRestartSeconds', 'Hedefe ulaşınca yeni tur (sn, 0 = elle)', 'number', { min: 0 }],
+  ['autoRestartSeconds', 'Tur bitince yeni tur (sn, 0 = elle)', 'number', { min: 0 }],
+  ['Yolcu koltuğu'],
+  ['passengerMinDiamonds', 'Yolcu olmak için en az elmas', 'number', { min: 1 }],
+  ['passengerSeconds', 'Yolcu koltuğunda kalma süresi (sn, 0 = kapalı)', 'number', { min: 0 }],
   ['Benzin'],
   ['fuelRangeMeters', 'Dolu depo kaç metre gider', 'number', { min: 10, step: 10 }],
   ['emptySpeedPercent', 'Benzin bitince hız (% normal)', 'number', { min: 0, max: 100 }],
@@ -295,7 +320,7 @@ const SETTING_DEFS = [
   ['respawnSeconds', 'Patlayınca yeniden doğma süresi (sn)', 'number', { min: 0.5, step: 0.5 }],
   ['explodePenalty', 'Patlamada varsayılan geri ceza (m)', 'number', { min: 0 }],
   ['tireRepairSeconds', 'Patlak teker kendiliğinden tamir (sn, 0 = asla)', 'number', { min: 0 }],
-  ['antiStuck', 'Takılınca hafifçe it (benzin varken)', 'checkbox'],
+  ['antiStuck', 'Takılınca hafifçe it (yalnızca otomatik sürüşte)', 'checkbox'],
   ['airControl', 'Havada denge yardımı (az takla)', 'checkbox'],
   ['Kuyruk'],
   ['exclusiveGap', 'Özel eylemler arası bekleme (sn)', 'number', { min: 0, step: 0.1 }],
@@ -471,6 +496,9 @@ function drawCarPreview(canvas, c, url) {
 // ---------------- Başlat ----------------
 function renderAll() {
   $('#tt-user').value = config.settings.tiktokUsername || '';
+  $('#live-source').value = config.settings.liveSource || 'tikfinity';
+  $('#tf-url').value = config.settings.tikfinityUrl || 'ws://localhost:21213/';
+  updateSourceUi();
   renderRules();
   renderGifts();
   renderSettings();

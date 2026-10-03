@@ -29,16 +29,34 @@ body.hide-ui #hud > :not(#announce):not(#win) { display: none; }
 #progress .markers .mk i { font-style: normal; font-weight: 800; font-size: .8em; padding: 0 .3em; border-radius: .5em; }
 #progress .markers .mk.up i { background: var(--good); color: #062; }
 #progress .markers .mk.down i { background: var(--bad); color: #300; }
-#progress .labels { display: flex; justify-content: center; gap: .4em; margin-top: 1.3em; font-weight: 800; text-shadow: 0 2px 4px #000; }
+#progress .labels { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 1.3em; font-weight: 800; text-shadow: 0 2px 4px #000; }
+#progress .zero { position: absolute; left: 50%; top: -4px; bottom: -4px; width: 3px; transform: translateX(-50%); background: #fff; border-radius: 2px; opacity: .85; }
+#progress .fill.neg { background: linear-gradient(270deg, #ffb22e, #ff3b6b 60%, #8b0000); box-shadow: 0 0 12px rgba(255,60,60,.5); }
+#progress .skull { position: absolute; left: -0.2em; top: 50%; transform: translateY(-60%); font-size: 1.3em; }
+#lose-label { color: #ff8a8a; opacity: .9; }
+#score { display: flex; gap: .4em; font-weight: 800; }
+#score span { background: var(--panel); border: 2px solid var(--line); border-radius: 1em; padding: .1em .6em; }
+#score .w { color: #ffd23f; }
+#score .l { color: #ff8a8a; }
+#countdown { position: absolute; left: 0; right: 0; top: 17%; display: none; flex-direction: column; align-items: center; text-shadow: 0 4px 0 #000, 0 0 30px rgba(0,0,0,.6); }
+#countdown.show { display: flex; }
+#countdown .lbl { font-size: 1.6em; font-weight: 800; padding: .1em .8em; border-radius: 1em; background: rgba(10,10,25,.7); }
+#countdown .num { font-size: 5.5em; font-weight: 800; line-height: 1; }
+#countdown.win .lbl, #countdown.win .num { color: #3ddc84; }
+#countdown.lose .lbl, #countdown.lose .num { color: #ff4d4d; }
+#countdown .num.pulse { animation: cdpulse .5s ease-out; }
+@keyframes cdpulse { from { transform: scale(1.5); } }
+#win .box.lose { border-color: #ff4d4d; }
+#win .box.lose .t { color: #ff4d4d; }
 #dist { font-size: 1.7em; line-height: 1; }
 #target { font-size: 1.05em; opacity: .8; align-self: flex-end; }
-#top .row2 { display: flex; align-items: center; gap: 12px; }
+#top .row2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 #fuel { display: flex; align-items: center; gap: .4em; background: var(--panel); border: 2px solid var(--line); border-radius: 1em; padding: .15em .6em; font-weight: 800; }
-#fuel .bar { width: 9em; height: .8em; border-radius: .5em; background: rgba(255,255,255,.15); overflow: hidden; }
+#fuel .bar { width: 7em; height: .8em; border-radius: .5em; background: rgba(255,255,255,.15); overflow: hidden; }
 #fuel .fill { height: 100%; width: 100%; transition: width .2s, background .3s; }
 #fuel.empty { animation: blink .6s infinite alternate; border-color: var(--bad); }
 @keyframes blink { to { background: rgba(255,60,60,.55); } }
-#timer { font-weight: 800; opacity: .85; text-shadow: 0 2px 3px #000; margin-left: auto; }
+#timer { font-weight: 800; opacity: .85; text-shadow: 0 2px 3px #000; margin-left: auto; font-size: .85em; }
 #status-icons { display: flex; flex-wrap: wrap; gap: 6px; }
 #status-icons .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 1em; padding: .05em .55em; font-weight: 800; display: inline-flex; gap: .3em; align-items: center; }
 #status-icons .chip b { font-size: .85em; opacity: .9; }

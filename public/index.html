@@ -14,15 +14,18 @@
     <div id="top">
       <div id="progress">
         <div class="track">
+          <div class="zero"></div>
           <div class="fill"></div>
           <div class="markers"></div>
           <div class="car">🚙</div>
+          <div class="skull">💀</div>
           <div class="flag">🏁</div>
         </div>
-        <div class="labels"><span id="dist">0 m</span><span id="target">/ 1000 m</span></div>
+        <div class="labels"><span id="lose-label">-1000</span><span id="dist">0 m</span><span id="target">+1000</span></div>
       </div>
       <div class="row2">
         <div id="fuel"><span class="icon">⛽</span><div class="bar"><div class="fill"></div></div><span class="pct">%100</span></div>
+        <div id="score"><span class="w">🏆 0</span><span class="l">💀 0</span></div>
         <div id="timer"></div>
       </div>
       <div id="status-icons"></div>
@@ -31,6 +34,7 @@
     <div id="queue" class="empty"><h4>Sıradaki</h4><ul></ul></div>
     <div id="feed"></div>
     <div id="announce"></div>
+    <div id="countdown"><div class="lbl"></div><div class="num"></div></div>
     <div id="pause">⏸ DURAKLATILDI</div>
     <div id="win"></div>
     <div id="conn" class="off">○ TikTok bağlı değil</div>

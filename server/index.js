@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { TikTokBridge } from './tiktok.js';
+import { TikTokBridge, TikFinityBridge } from './tiktok.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -83,7 +83,7 @@ app.get('/api/gifts', async (req, res) => {
     image: `/assets/gifts/${f.split('/').map(encodeURIComponent).join('/')}`,
     source: 'klasör',
   }));
-  const live = await tiktok.getAvailableGifts().catch(() => []);
+  const live = await direct.getAvailableGifts().catch(() => []);
   res.json({ folder, live });
 });
 
@@ -97,22 +97,63 @@ function broadcast(msg, except) {
   }
 }
 
-const tiktok = new TikTokBridge({
+// Canlı bağlantı: varsayılan TikFinity, istenirse doğrudan TikTok
+let liveStatus = { source: 'tikfinity', connected: false, error: 'Bağlı değil' };
+const bridgeOpts = {
   onEvent: (event) => broadcast({ type: 'tiktok', event }),
-  onStatus: (status) => broadcast({ type: 'status', tiktok: status }),
+  onStatus: (status) => { liveStatus = status; broadcast({ type: 'status', tiktok: status }); },
+};
+const tikfinity = new TikFinityBridge(bridgeOpts);
+const direct = new TikTokBridge(bridgeOpts);
+
+function liveConnect({ source, url, username }) {
+  tikfinity.disconnect(true);
+  direct.disconnect(true);
+  if (source === 'tiktok') direct.connect(username);
+  else tikfinity.connect(url);
+}
+
+function liveDisconnect() {
+  tikfinity.disconnect(true);
+  direct.disconnect(true);
+  bridgeOpts.onStatus({ source: liveStatus.source, connected: false, error: 'Bağlantı kesildi' });
+}
+
+// TikFinity'nin "Webhook" eylemi veya başka araçlar için basit tetikleyici:
+//   http://localhost:3000/api/trigger?action=nitro&user=ali&count=2
+app.all('/api/trigger', (req, res) => {
+  const q = { ...req.query, ...(typeof req.body === 'object' ? req.body : {}) };
+  if (!q.action) return res.status(400).json({ ok: false, error: 'action gerekli' });
+  const name = String(q.user || q.nickname || 'TikFinity');
+  broadcast({
+    type: 'cmd', cmd: 'action', action: String(q.action), count: Math.max(1, Number(q.count) || 1),
+    user: { id: 'hook-' + name, uniqueId: name, nickname: name, avatar: String(q.avatar || '') },
+  });
+  res.json({ ok: true });
+});
+
+// Hazır biçimde olay göndermek için (ör. { kind: 'gift', user: {...}, count, gift: {...} })
+app.post('/api/event', (req, res) => {
+  if (!req.body?.kind) return res.status(400).json({ ok: false });
+  broadcast({ type: 'tiktok', event: { ts: Date.now(), ...req.body } });
+  res.json({ ok: true });
 });
 
 wss.on('connection', (ws) => {
-  ws.send(JSON.stringify({ type: 'status', tiktok: tiktok.status }));
+  ws.send(JSON.stringify({ type: 'status', tiktok: liveStatus }));
   ws.on('message', (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
     switch (msg.type) {
-      case 'tiktok-connect':
-        tiktok.connect(msg.username);
+      case 'live-connect':
+        liveConnect(msg);
         break;
+      case 'tiktok-connect':
+        liveConnect({ source: 'tiktok', username: msg.username });
+        break;
+      case 'live-disconnect':
       case 'tiktok-disconnect':
-        tiktok.disconnect();
+        liveDisconnect();
         break;
       default:
         // Panel komutları ve oyun durum bilgisi diğer istemcilere aktarılır.
@@ -124,6 +165,10 @@ wss.on('connection', (ws) => {
 server.listen(PORT, () => {
   console.log(`\n  Oyun:  http://localhost:${PORT}/`);
   console.log(`  Panel: http://localhost:${PORT}/panel.html\n`);
-  const user = process.env.TIKTOK_USERNAME;
-  if (user) tiktok.connect(user);
+  // Başlangıçta kayıtlı bağlantı ayarıyla otomatik bağlan (varsayılan: TikFinity)
+  let s = {};
+  try { s = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8')).settings || {}; } catch { /* ilk çalıştırma */ }
+  if (process.env.TIKTOK_USERNAME) liveConnect({ source: 'tiktok', username: process.env.TIKTOK_USERNAME });
+  else if ((s.liveSource || 'tikfinity') === 'tikfinity') liveConnect({ source: 'tikfinity', url: process.env.TIKFINITY_URL || s.tikfinityUrl });
+  else if (s.tiktokUsername) liveConnect({ source: 'tiktok', username: s.tiktokUsername });
 });

@@ -63,11 +63,24 @@ async function boot() {
   const keys = {
     Digit1: 'boost', Digit2: 'nitro', Digit3: 'jump', Digit4: 'rocket', Digit5: 'bomb',
     Digit6: 'popTire', Digit7: 'explode', Digit8: 'changeVehicle', Digit9: 'changeMap', Digit0: 'refuel',
-    KeyM: 'missile', KeyS: 'shield', KeyT: 'tornado', KeyE: 'meteor', KeyQ: 'teleport',
+    KeyM: 'missile', KeyK: 'shield', KeyT: 'tornado', KeyE: 'meteor', KeyQ: 'teleport',
   };
+  // Sürüş tuşları: → / D gaz, ← / A geri, ↑ / W geriye eğil, ↓ / S öne eğil
+  const drive = {
+    ArrowRight: 'right', KeyD: 'right', ArrowLeft: 'left', KeyA: 'left',
+    ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down',
+  };
+  window.addEventListener('keyup', (e) => {
+    const k = drive[e.code];
+    if (k) game.input[k] = false;
+  });
+  window.addEventListener('blur', () => { for (const k in game.input) game.input[k] = false; });
   window.addEventListener('keydown', (e) => {
     if (e.target.closest?.('input, textarea, select')) return;
-    if (e.code === 'KeyP' || e.code === 'Space') { game.paused = !game.paused; e.preventDefault(); return; }
+    const k = drive[e.code];
+    if (k) { game.input[k] = true; e.preventDefault(); return; }
+    if (e.repeat) return;
+    if (e.code === 'KeyP') { game.paused = !game.paused; e.preventDefault(); return; }
     if (e.code === 'KeyR' && e.shiftKey) { game.restart(); return; }
     if (e.code === 'F2' || e.code === 'Tab') { togglePanel(); e.preventDefault(); return; }
     if (e.code === 'KeyH') { document.body.classList.toggle('hide-ui'); return; }
@@ -108,6 +121,7 @@ function handleCommand(game, msg) {
     case 'resume': game.paused = false; break;
     case 'togglePause': game.paused = !game.paused; break;
     case 'restart': game.restart(); break;
+    case 'resetScore': game.resetScore(); break;
     case 'clearQueue': game.queue.clear(); break;
     case 'fuel': game.fuel = Math.max(0, Math.min(100, Number(msg.value))); break;
   }

@@ -43,7 +43,7 @@ export function runAction(g, job) {
     }
     case 'jump':
     case 'superJump': {
-      const power = num(p.power, job.action === 'jump' ? 1 : 2.2);
+      const power = num(p.power, job.action === 'jump' ? 1 : 2.2) * Math.sqrt(Math.min(n, 4));
       v.applyImpulse(v.mass * 1.5 * power, v.mass * 7 * power);
       g.sound.play('jump');
       for (const w of v.wheels) { const wp = w.body.getPosition(); for (let i = 0; i < 6; i++) fx.dust(wp.x, wp.y - w.radius); }
@@ -145,8 +145,8 @@ export function runAction(g, job) {
       else if (which === 'rear') targets = [rear];
       else if (which === 'all') targets = idx;
       else {
-        const healthy = idx.filter((i) => !v.wheels[i].popped);
-        targets = healthy.length ? [healthy[Math.floor(Math.random() * healthy.length)]] : [];
+        const healthy = idx.filter((i) => !v.wheels[i].popped).sort(() => Math.random() - 0.5);
+        targets = healthy.slice(0, Math.min(n, healthy.length));
       }
       let any = false;
       for (const i of targets) any = g.popWheel(i, null) || any;
@@ -157,9 +157,11 @@ export function runAction(g, job) {
     case 'mine':
     case 'oil':
     case 'barrier': {
-      const x = pos.x + 14 + Math.max(0, v.vel.x) * 0.9 + Math.random() * 4;
-      g.hazards.spawn(job.action, x);
-      g.announce(`${meta.icon} ${who}: ${meta.name}!`, '#ff9f43', job, true);
+      const dir = v.vel.x < -1 ? -1 : 1; // aracın gittiği yönün önüne koy
+      const x = pos.x + dir * (14 + Math.abs(v.vel.x) * 0.9 + Math.random() * 4);
+      const c = Math.min(n, 4);
+      for (let i = 0; i < c; i++) g.hazards.spawn(job.action, x + dir * i * 6, { drop: 1.2 + i * 0.2 });
+      g.announce(`${meta.icon} ${who}: ${meta.name}${c > 1 ? ' x' + c : ''}!`, '#ff9f43', job, true);
       break;
     }
     case 'meteor': {
@@ -211,13 +213,13 @@ export function runAction(g, job) {
       fx.text(pos.x, pos.y + 2.5, '🌪️ Karşı rüzgar', '#bdf4ff');
       break;
     case 'freeze':
-      g.timers.freeze = Math.min(10, g.timers.freeze + num(p.seconds, 3));
+      g.timers.freeze = Math.min(10, g.timers.freeze + num(p.seconds, 3) * n);
       g.sound.play('block');
       fx.flash('#bfefff', 0.4);
       fx.text(pos.x, pos.y + 2.5, '🧊 DONDU!', '#bfefff');
       break;
     case 'reverse':
-      g.timers.reverse = Math.min(10, g.timers.reverse + num(p.seconds, 3));
+      g.timers.reverse = Math.min(10, g.timers.reverse + num(p.seconds, 3) * n);
       g.sound.play('bad');
       fx.text(pos.x, pos.y + 2.5, '⏪ Geri vites!', '#ff9f43');
       g.driver.setMood('angry', 3);
@@ -228,7 +230,7 @@ export function runAction(g, job) {
       fx.text(pos.x, pos.y + 2.5, `🕳️ -%${num(p.percent, 15) * n} benzin`, '#ff6b6b');
       break;
     case 'earthquake':
-      g.timers.quake = Math.min(10, g.timers.quake + num(p.seconds, 3));
+      g.timers.quake = Math.min(10, g.timers.quake + num(p.seconds, 3) * n);
       g.sound.play('bomb');
       fx.text(pos.x, pos.y + 2.5, '🌋 DEPREM!', '#ff9f43');
       break;
@@ -238,7 +240,7 @@ export function runAction(g, job) {
       break;
     case 'flip':
       g.sound.play('jump');
-      g.startFlight({ dx: 3, height: 3.5, dur: 1.1, spins: 1, kind: 'flip' });
+      g.startFlight({ dx: 3, height: 3.5 + Math.min(n, 3), dur: 1.1 + Math.min(n, 3) * 0.3, spins: Math.min(n, 3), kind: 'flip' });
       fx.text(pos.x, pos.y + 2.5, '🤸 TAKLA!', '#ffd23f');
       break;
 
@@ -267,15 +269,15 @@ export function runAction(g, job) {
       g.sound.play('gift');
       break;
     case 'confetti':
-      fx.confetti(g.cam.w, g.cam.h, 140);
+      fx.confetti(g.cam.w, g.cam.h, Math.min(400, 140 * n));
       g.sound.play('gift');
       break;
     case 'fireworks':
-      fx.fireworks(g.cam.w, g.cam.h, Math.min(12, num(p.bursts, 5)));
+      fx.fireworks(g.cam.w, g.cam.h, Math.min(12, num(p.bursts, 5) * n));
       g.sound.play('win');
       break;
     case 'slowMotion':
-      g.timers.slowmo = Math.min(12, g.timers.slowmo + num(p.seconds, 4));
+      g.timers.slowmo = Math.min(12, g.timers.slowmo + num(p.seconds, 4) * n);
       fx.text(pos.x, pos.y + 2.5, '🐌 Ağır çekim', '#d0b3ff');
       break;
     case 'paint': {

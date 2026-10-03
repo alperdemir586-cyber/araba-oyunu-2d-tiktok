@@ -76,6 +76,8 @@ export class RuleEngine {
         action: rule.action,
         params: { ...ACTIONS[rule.action].params, ...(rule.params || {}) },
         count: n,
+        // elmas değeri: yüksek değerli hediyeler kuyrukta öne geçer
+        value: ev.kind === 'gift' ? Math.max(1, Number(ev.gift?.diamonds) || 1) * n : 0,
         priority: Number(rule.priority ?? 1),
         user: ev.user,
         source: ev,
@@ -102,25 +104,25 @@ export class ActionQueue {
     if (!meta) return;
     if (meta.instant) { this.game.runJob(job); return; }
     const max = this.game.settings.maxQueue;
-    if (meta.stack) {
-      // Aynı eylem + aynı parametre bekliyorsa birleştir (ör. 5 Boost -> 1 uzun Boost)
-      const key = JSON.stringify(job.params);
-      const same = this.items.find((j) => j.action === job.action && JSON.stringify(j.params) === key);
-      if (same) {
-        same.count = Math.min(same.count + job.count, 30);
-        same.merged = (same.merged || 1) + 1;
-        if (job.user) same.user = job.user;
-        return;
-      }
-      this.items.push(job);
+    job.value = job.value || 0;
+    // Aynı türden bekleyen eylemler birleşir (ör. 5 Nitro -> 1 uzun Nitro, 3 Bomba -> 3 kat mesafe)
+    const key = JSON.stringify(job.params);
+    const same = this.items.find((j) => j.action === job.action && JSON.stringify(j.params) === key);
+    if (same) {
+      same.count = Math.min(same.count + job.count, 30);
+      same.merged = (same.merged || 1) + 1;
+      same.value += job.value;
+      same.priority = Math.max(same.priority, job.priority);
+      if (job.user && job.value >= (same.topValue || 0)) { same.user = job.user; same.topValue = job.value; }
     } else {
-      for (let i = 0; i < job.count; i++) this.items.push({ ...job, id: i ? job.id + '_' + i : job.id, count: 1 });
+      job.topValue = job.value;
+      this.items.push(job);
     }
-    this.items.sort((a, b) => b.priority - a.priority || a.ts - b.ts);
+    // Sıralama: kural önceliği > elmas değeri > geliş sırası
+    this.items.sort((a, b) => b.priority - a.priority || b.value - a.value || a.ts - b.ts);
     while (this.items.length > max) {
-      // en düşük öncelikli en yeni işi düşür
-      let idx = this.items.length - 1;
-      this.items.splice(idx, 1);
+      // en düşük öncelikli / en düşük değerli işi düşür
+      this.items.pop();
       this.dropped++;
     }
   }

@@ -34,6 +34,10 @@ export class Game {
     this.markers = [];
     this.leaders = new Map();
     this.round = 0;
+    this.score = loadScore();
+    this.input = { right: false, left: false, up: false, down: false };
+    this.passenger = null;
+    this.camLook = 0;
     this.resize();
     window.addEventListener('resize', () => this.resize());
     this.restart();
@@ -69,6 +73,7 @@ export class Game {
     this.stuckT = 0;
     this.upsideT = 0;
     this.quakeT = 0;
+    this.throttle = 0;
     this.gravityMod = null;
     this.shield = { hits: 0, time: 0 };
     this.timers = { boost: 0, boostPower: 1, nitro: 0, wind: 0, windDir: 1, freeze: 0, reverse: 0, slowmo: 0, oil: 0, quake: 0, size: 0, invuln: 0 };
@@ -76,15 +81,19 @@ export class Game {
     this.markers = [];
     this.scheduled = [];
     this.nextAutoMap = s.autoMapEvery > 0 ? s.autoMapEvery : Infinity;
+    this.countdown = null;
+    this.passenger = null;
+    this.endT = 0;
     this.queue.clear();
     this.driver = new Driver();
     this.vehicleId = this.vehicleIds().includes(s.startVehicle) ? s.startVehicle : 'jeep';
     this.terrain.ensure(0);
     const def = this.getDef(this.vehicleId);
-    this.vehicle = new Vehicle(this.world, def, 2, 0, 1);
-    this.placeOnGround(this.vehicle, 2);
+    this.vehicle = new Vehicle(this.world, def, 0, 0, 1);
+    this.placeOnGround(this.vehicle, 0);
     this.round++;
-    this.cam.x = 4; this.cam.y = 2;
+    this.cam.x = 2; this.cam.y = 2;
+    this.camLook = 0;
     this.hud?.onRestart?.(this);
   }
 
@@ -123,7 +132,7 @@ export class Game {
     v.color = color; v.dark = dark;
     this.vehicle = v;
     this.placeOnGround(v, x);
-    v.setVelocity(Math.max(0, vel.x) * 0.5, 0);
+    v.setVelocity(vel.x * 0.5, 0);
     this.lastX = x;
   }
 
@@ -243,7 +252,9 @@ export class Game {
   handleEvent(ev) {
     if (ev.kind === 'gift' && ev.user) {
       const l = this.leader(ev.user);
-      l.coins += (ev.gift?.diamonds || 1) * (ev.count || 1);
+      const value = (ev.gift?.diamonds || 1) * (ev.count || 1);
+      l.coins += value;
+      this.offerPassenger(ev.user, value);
     }
     const jobs = this.rules.handle(ev);
     this.hud?.feed(ev, jobs);
@@ -281,7 +292,7 @@ export class Game {
   // ---------------- Uçuş (takla atarak ileri/geri fırlatma) ----------------
   startFlight({ dx, height, dur, spins, kind }) {
     const v = this.vehicle, p = v.pos;
-    const x1 = Math.max(0, p.x + dx);
+    const x1 = p.x + dx;
     this.terrain.ensure(x1);
     const slope = this.terrain.slopeAt(x1);
     const aEnd = Math.atan(slope);
@@ -332,7 +343,7 @@ export class Game {
       this.flight = null;
       this.mode = 'drive';
       v.setEnabled(true);
-      v.setVelocity(f.dx > 0 ? 5 : 1.5, -1);
+      v.setVelocity(f.kind === 'recover' ? 0 : Math.sign(f.dx || 1) * (f.dx > 0 ? 5 : 1.5), -1);
       this.lastX = v.pos.x;
       this.effects.shake(0.25, 0.25);
       this.sound.play('land');
@@ -353,7 +364,7 @@ export class Game {
     v.setEnabled(false);
     this.mode = 'dead';
     this.deadT = this.settings.respawnSeconds;
-    this.respawnX = Math.max(0, p.x - (penalty || 0));
+    this.respawnX = p.x - (penalty || 0);
     if (penalty && job) this.mark(-penalty, job);
     // yanan kalıntı dumanı
     for (let i = 0; i < 10; i++) this.later(i * 0.2, () => this.effects.smokePuff(p.x + (Math.random() - 0.5), p.y, 'rgba(40,40,40,0.7)', 1));
@@ -374,16 +385,84 @@ export class Game {
     this.sound.play('repair');
   }
 
+  // Büyük hediye gönderen izleyici yolcu koltuğuna oturur
+  offerPassenger(user, value) {
+    const s = this.settings;
+    if (!(s.passengerSeconds > 0) || value < (s.passengerMinDiamonds || 1)) return;
+    const cur = this.passenger;
+    if (cur && cur.t > 0 && cur.user.id !== user.id && value < cur.value) return;
+    this.passenger = {
+      user, value, t: s.passengerSeconds, max: s.passengerSeconds,
+      img: user.avatar ? this.assets.avatar(user.avatar) : null,
+    };
+    const p = this.vehicle.pos;
+    this.effects.sparkle(p.x, p.y + 1, '#ffd23f', 30);
+    this.announce(`💺 ${user.nickname} yolcu koltuğunda! (${value}💎)`, '#ffd23f', { user }, true);
+  }
+
+  // Hedef kontrolü: +hedefi geçince kazanma, -hedefin gerisine düşünce kaybetme geri sayımı
+  updateGoal(dt) {
+    if (!['drive', 'flight', 'dead'].includes(this.mode)) return;
+    const s = this.settings, T = Math.max(1, s.targetMeters);
+    const x = this.mode === 'dead' ? this.respawnX : this.vehicle.pos.x;
+    const type = x >= T ? 'win' : x <= -T ? 'lose' : null;
+    const cd = this.countdown;
+    if (!type) {
+      if (cd) {
+        const p = this.vehicle.pos;
+        this.effects.text(p.x, p.y + 3, cd.type === 'win' ? '⛔ Geri sayım iptal!' : '😮‍💨 Kurtuldun!', cd.type === 'win' ? '#ff6b6b' : '#3ddc84');
+        this.sound.play(cd.type === 'win' ? 'bad' : 'repair');
+        this.countdown = null;
+      }
+      return;
+    }
+    if (!cd || cd.type !== type) {
+      const total = type === 'win' ? s.winCountdown : s.loseCountdown;
+      this.countdown = { type, t: total, total, last: Math.ceil(total) };
+      this.sound.play(type === 'win' ? 'change' : 'bad');
+      return;
+    }
+    cd.t -= dt;
+    const sec = Math.ceil(cd.t);
+    if (sec !== cd.last) {
+      cd.last = sec;
+      if (sec > 0) this.sound.tick(sec <= 3);
+    }
+    if (cd.t <= 0) {
+      this.countdown = null;
+      if (type === 'win') this.win(); else this.lose();
+    }
+  }
+
   win() {
     this.mode = 'win';
-    this.winT = this.settings.autoRestartSeconds;
+    this.endT = this.settings.autoRestartSeconds;
+    this.score.wins++;
+    saveScore(this.score);
     this.sound.play('win');
     const { w, h } = this.cam;
     this.effects.fireworks(w, h, 8);
     this.effects.confetti(w, h, 200);
     this.later(1.5, () => this.effects.fireworks(w, h, 6));
     this.later(3, () => this.effects.fireworks(w, h, 6));
-    this.hud?.showWin(this);
+    this.hud?.showEnd(this, 'win');
+  }
+
+  lose() {
+    this.mode = 'lose';
+    this.endT = this.settings.autoRestartSeconds;
+    this.score.losses++;
+    saveScore(this.score);
+    this.sound.play('explode');
+    this.effects.flash('#300000', 0.6);
+    this.effects.emojiRain(this.cam.w, this.cam.h, '💀', 40);
+    this.driver.setMood('dizzy', 10);
+    this.hud?.showEnd(this, 'lose');
+  }
+
+  resetScore() {
+    this.score = { wins: 0, losses: 0 };
+    saveScore(this.score);
   }
 
   // ---------------- Döngü ----------------
@@ -414,6 +493,7 @@ export class Game {
     for (const k of ['boost', 'nitro', 'wind', 'freeze', 'reverse', 'slowmo', 'oil', 'quake', 'invuln']) T[k] = Math.max(0, T[k] - simDt);
     if (this.shield.time > 0) { this.shield.time -= simDt; if (this.shield.time <= 0) this.shield.hits = 0; }
     if (this.gravityMod) { this.gravityMod.t -= simDt; if (this.gravityMod.t <= 0) this.gravityMod = null; }
+    if (this.passenger) { this.passenger.t -= dt; if (this.passenger.t <= 0) this.passenger = null; }
     for (let i = this.scheduled.length - 1; i >= 0; i--) {
       const s = this.scheduled[i];
       s.t -= simDt;
@@ -423,16 +503,17 @@ export class Game {
     this.queue.update(dt);
     const v = this.vehicle;
     const s = this.settings;
+    const ended = this.mode === 'win' || this.mode === 'lose';
 
-    if (this.mode === 'drive' || this.mode === 'win') this.controlVehicle(simDt);
+    if (this.mode === 'drive' || ended) this.controlVehicle(simDt);
     else if (this.mode === 'flight') this.updateFlight(simDt);
     else if (this.mode === 'dead') {
       this.deadT -= simDt;
       if (this.deadT <= 0) this.respawn();
     }
-    if (this.mode === 'win') {
-      this.winT -= dt;
-      if (this.winT <= 0 && s.autoRestartSeconds > 0) { this.restart(); return; }
+    if (ended) {
+      this.endT -= dt;
+      if (this.endT <= 0 && s.autoRestartSeconds > 0) { this.restart(); return; }
     }
 
     // boyut efekti bitişi
@@ -444,34 +525,28 @@ export class Game {
       }
     }
 
-    // fizik
+    // fizik: her karede kare süresine bölünmüş alt adımlar (takılma/titreme olmaz)
     this.applyGravity();
-    this.acc = (this.acc || 0) + simDt;
-    let steps = 0;
-    while (this.acc >= FIXED && steps < 5) {
-      this.world.step(FIXED, 8, 3);
-      this.acc -= FIXED;
-      steps++;
-    }
-    if (steps === 5) this.acc = 0;
+    const n = Math.max(1, Math.ceil(simDt / FIXED - 1e-6));
+    for (let i = 0; i < n; i++) this.world.step(simDt / n, 8, 3);
 
     const vv = this.vehicle;
     const p = vv.pos;
-    // ilerleme ve yakıt
+    // ilerleme ve yakıt (yalnızca motor çalışırken ve hareket ederken harcanır)
     if (this.mode === 'drive') {
-      const dx = p.x - this.lastX;
-      if (dx > 0) this.fuel = Math.max(0, this.fuel - (dx / Math.max(1, s.fuelRangeMeters)) * 100);
+      const dx = Math.abs(p.x - this.lastX);
+      if (this.throttle !== 0) this.fuel = Math.max(0, this.fuel - (dx / Math.max(1, s.fuelRangeMeters)) * 100);
       this.lastX = p.x;
       if (p.y < this.terrain.heightAt(p.x) - 6) this.placeOnGround(vv, p.x);
-      if (p.x >= s.targetMeters) this.win();
       if (p.x >= this.nextAutoMap) {
         this.nextAutoMap += s.autoMapEvery;
         const cur = this.terrain.mapAt(p.x);
         this.setMap(MAP_IDS[(MAP_IDS.indexOf(cur) + 1) % MAP_IDS.length]);
       }
     }
+    this.updateGoal(dt);
     this.maxX = Math.max(this.maxX, p.x);
-    if (this.mode !== 'win' && this.mode !== 'dead') this.elapsed += dt;
+    if (!ended && this.mode !== 'dead') this.elapsed += dt;
 
     // otomatik teker tamiri
     if (s.tireRepairSeconds > 0) {
@@ -486,8 +561,9 @@ export class Game {
       });
     }
 
-    this.terrain.update(this.cam.x - 40, Math.max(p.x, this.cam.x) + 70);
+    this.terrain.update(Math.min(p.x, this.cam.x) - 70, Math.max(p.x, this.cam.x) + 70);
     this.hazards.spawnNatural(p.x + 25, p.x + 70);
+    this.hazards.spawnNatural(p.x - 70, p.x - 25);
     this.hazards.update(simDt);
     this.effects.update(dt);
     for (const m of this.markers) m.t += dt;
@@ -498,35 +574,45 @@ export class Game {
     const grounded = vv.updateGrounded(this.terrain) > 0;
     this.driver.update(simDt, vv.vel, vv.angle, !grounded && this.mode !== 'dead', { fuelEmpty: this.fuel <= 0 });
     this.updateCamera(dt);
-    this.sound.updateEngine(vv.vel.x, T.boost > 0 || T.nitro > 0 ? 1 : 0.4, this.mode === 'drive' && !this.paused);
+    this.sound.updateEngine(vv.vel.x, T.boost > 0 || T.nitro > 0 ? 1 : Math.abs(this.throttle || 0) * 0.6, this.mode === 'drive' && !this.paused);
   }
 
   controlVehicle(dt) {
-    const v = this.vehicle, s = this.settings, T = this.timers;
+    const v = this.vehicle, s = this.settings, T = this.timers, inp = this.input;
     const mass = v.mass;
     const fuelEmpty = this.fuel <= 0;
-    let speed = s.cruiseSpeed * (v.def.speed || 1) * (fuelEmpty ? s.emptySpeedPercent / 100 : 1);
-    let torque = 1;
+    const keyboard = s.controlMode !== 'auto';
+    const ended = this.mode === 'win' || this.mode === 'lose';
+    // gaz: klavyede → / D ileri, ← / A geri; otomatik modda hep ileri
+    let throttle = keyboard ? (inp.right ? 1 : 0) - (inp.left ? 1 : 0) : 1;
+    if (T.reverse > 0) throttle = -throttle; // "geri vites" sabotajı: kontroller ters
+    if (T.freeze > 0 || ended) throttle = 0;
+    this.throttle = throttle;
+    const maxSpeed = s.cruiseSpeed * (v.def.speed || 1) * (fuelEmpty ? s.emptySpeedPercent / 100 : 1);
+    let speed = throttle * maxSpeed * (throttle < 0 ? 0.7 : 1);
+    let torque = throttle === 0 ? 0.06 : 1; // gaz yokken hafif motor freni, araç yokuşta yuvarlanabilir
     const a = v.angle, fwdX = Math.cos(a), fwdY = Math.sin(a);
     const grounded = v.wheels.some((w) => w.grounded);
     if (T.boost > 0) {
-      speed *= 1.5 + 0.25 * (T.boostPower - 1);
-      torque *= 1.8;
+      if (throttle >= 0) { speed = Math.max(speed, maxSpeed) * (1.5 + 0.25 * (T.boostPower - 1)); torque = 1.8; }
       if (grounded) v.applyForce(fwdX * mass * 6 * T.boostPower, fwdY * mass * 6 * T.boostPower);
       const [ex, ey] = v.local(v.def.chassis[0][0] - 0.1, 0);
       this.effects.boostFlame(ex, ey, -fwdX, -fwdY, false);
     }
     if (T.nitro > 0) {
-      speed *= 2.4;
-      torque *= 2.5;
+      if (throttle >= 0) { speed = Math.max(speed, maxSpeed) * 2.4; torque = 2.5; }
       v.applyForce(fwdX * mass * 16, fwdY * mass * 16);
       const [ex, ey] = v.local(v.def.chassis[0][0] - 0.1, 0);
       this.effects.boostFlame(ex, ey, -fwdX, -fwdY, true);
     }
-    if (T.reverse > 0) speed = -Math.abs(speed) * 0.8;
-    if (T.freeze > 0 || this.mode === 'win') { speed = 0; torque = 8; }
+    if (T.freeze > 0 || ended) { speed = 0; torque = 8; }
     v.drive(speed, torque);
     v.setFriction(T.oil > 0 ? 0.12 : 1);
+    // eğilme: ↑ / W geriye, ↓ / S öne (havada daha etkili)
+    if (keyboard && !ended && (inp.up || inp.down)) {
+      const dir = (inp.up ? 1 : 0) - (inp.down ? 1 : 0);
+      v.chassis.applyTorque(dir * v.chassis.getInertia() * (grounded ? 6 : 14), true);
+    }
     if (T.wind > 0) v.applyForce(T.windDir * mass * 7, 0);
     if (T.quake > 0) {
       this.quakeT -= dt;
@@ -536,23 +622,25 @@ export class Game {
         v.applyImpulse((Math.random() - 0.5) * mass * 2, mass * (1 + Math.random() * 2.5));
       }
     }
-    // havada denge ve şaha kalkma sınırlayıcı (çok fazla ters dönmeyi engeller)
-    if (s.airControl) v.stabilize(this.terrain);
+    // havada denge ve şaha kalkma sınırlayıcı (oyuncu eğilirken devre dışı)
+    if (s.airControl && !(keyboard && (inp.up || inp.down))) v.stabilize(this.terrain);
     // ters yerçekiminde sonsuza uçmayı engelle
     const p = v.pos;
     const hAbove = p.y - this.terrain.heightAt(p.x);
     if (hAbove > 18) v.applyForce(0, -mass * (hAbove - 18) * 4);
 
-    // takılma / ters dönme kurtarma
+    // ters dönme kurtarma: ayarlanan süre (varsayılan 3 sn) ters kalırsa kendiliğinden düzelir
     if (this.mode !== 'drive') return;
     const upside = Math.cos(a) < -0.15;
     this.upsideT = upside ? this.upsideT + dt : 0;
-    if (this.upsideT > 2.2) {
+    if (this.upsideT > (s.flipRecoverSeconds || 3)) {
       this.upsideT = 0;
-      this.startFlight({ dx: 1, height: 2.2, dur: 0.9, spins: 0, kind: 'recover' });
+      this.startFlight({ dx: 0.5 * Math.sign(v.vel.x || 1), height: 2.2, dur: 0.9, spins: 0, kind: 'recover' });
       this.effects.text(p.x, p.y + 2, '🔄', '#fff');
       return;
     }
+    // takılma yardımı yalnızca otomatik sürüşte
+    if (keyboard) return;
     const slow = Math.abs(v.vel.x) < 0.35 && T.freeze <= 0;
     this.stuckT = slow ? this.stuckT + dt : 0;
     if (s.antiStuck && this.stuckT > 6 && !fuelEmpty) {
@@ -572,18 +660,21 @@ export class Game {
     if (Math.abs(cur.y - gy) > 1e-3) this.world.setGravity(planck.Vec2(0, gy));
   }
 
+  // Kamera aracı sıkı takip eder (araç ekranda kaymaz, net görünür); ileri bakış ve
+  // yükseklik yumuşatılır ki tümsekler ekranı sallamasın.
   updateCamera(dt) {
     const v = this.vehicle, p = v.pos, c = this.cam;
-    const speed = Math.abs(v.vel.x);
-    const nitroZoom = this.timers.nitro > 0 ? 0.85 : 1;
-    const targetPpm = (this.basePpm * (this.settings.zoom || 1) * nitroZoom) / Math.sqrt(v.scale) * (1 - Math.min(speed, 25) / 25 * 0.12);
-    c.ppm += (targetPpm - c.ppm) * Math.min(1, dt * 2);
+    const nitroZoom = this.timers.nitro > 0 ? 0.9 : 1;
+    const targetPpm = (this.basePpm * (this.settings.zoom || 1) * nitroZoom) / Math.sqrt(v.scale);
+    c.ppm += (targetPpm - c.ppm) * Math.min(1, dt * 1.5);
     const viewW = c.w / c.ppm;
-    const look = Math.max(-0.12 * viewW, Math.min(0.22 * viewW, v.vel.x * 0.45)) + viewW * 0.08;
-    const tx = p.x + look, ty = p.y + (c.h / c.ppm) * 0.06;
-    const k = this.mode === 'flight' ? 6 : 3.5;
-    c.x += (tx - c.x) * Math.min(1, dt * k);
-    c.y += (ty - c.y) * Math.min(1, dt * k * 0.8);
+    const lookTarget = Math.max(-0.15 * viewW, Math.min(0.15 * viewW, v.vel.x * 0.35));
+    this.camLook += (lookTarget - this.camLook) * Math.min(1, dt * 1.2);
+    const tx = p.x + this.camLook + viewW * 0.05;
+    const groundY = this.terrain.heightAt(p.x);
+    const ty = Math.max(groundY + 1, p.y * 0.6 + (groundY + 1) * 0.4) + (c.h / c.ppm) * 0.06;
+    c.x += (tx - c.x) * Math.min(1, dt * (this.mode === 'flight' ? 8 : 10));
+    c.y += (ty - c.y) * Math.min(1, dt * 3);
   }
 
   // ---------------- Çizim ----------------
@@ -617,7 +708,7 @@ export class Game {
     const v = this.vehicle;
     const hideCar = this.mode === 'dead' || (this.flight?.kind === 'teleport' && Math.abs(this.flight.t / this.flight.dur - 0.5) < 0.35);
     if (!hideCar) {
-      v.draw(ctx, c, this.driver, this.time, { groundY: this.terrain.heightAt(v.pos.x) });
+      v.draw(ctx, c, this.driver, this.time, { groundY: this.terrain.heightAt(v.pos.x), passenger: this.passenger });
       this.drawCarOverlays(ctx);
     }
     this.effects.drawWorld(ctx, c);
@@ -802,9 +893,20 @@ export class Game {
       dropped: this.queue.dropped,
       round: this.round,
       elapsed: this.elapsed,
+      score: this.score,
+      countdown: this.countdown ? { type: this.countdown.type, t: this.countdown.t } : null,
+      passenger: this.passenger?.user?.nickname || '',
       shield: this.shield.hits,
     };
   }
+}
+
+const SCORE_KEY = 'hediyeRallisiSkor';
+function loadScore() {
+  try { return { wins: 0, losses: 0, ...JSON.parse(localStorage.getItem(SCORE_KEY) || '{}') }; } catch { return { wins: 0, losses: 0 }; }
+}
+function saveScore(score) {
+  try { localStorage.setItem(SCORE_KEY, JSON.stringify(score)); } catch { /* depolama yok */ }
 }
 
 function hashStr(s) {

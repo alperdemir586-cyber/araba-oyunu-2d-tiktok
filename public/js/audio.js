@@ -143,6 +143,13 @@ export class Sound {
     }
   }
 
+  tick(urgent) {
+    if (!this.enabled || !this.ensure()) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.custom.has('tick')) { this.playCustom('tick'); return; }
+    this.tone({ type: 'square', from: urgent ? 1320 : 880, dur: 0.09, gain: urgent ? 0.14 : 0.09 });
+  }
+
   // Basit sürekli motor sesi; hıza göre perde değişir.
   updateEngine(speed, throttle, active) {
     if (!this.enabled || !this.ctx || this.ctx.state !== 'running') return;

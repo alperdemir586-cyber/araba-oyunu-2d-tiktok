@@ -83,7 +83,15 @@ export const TRIGGERS = {
 };
 
 export const DEFAULT_SETTINGS = {
-  targetMeters: 1000,
+  controlMode: 'keyboard', // 'keyboard' (yayıncı sürer) | 'auto' (araç kendi gider)
+  targetMeters: 1000, // +hedef: kazanma, -hedef: kaybetme sınırı
+  winCountdown: 15,
+  loseCountdown: 15,
+  flipRecoverSeconds: 3,
+  passengerMinDiamonds: 99,
+  passengerSeconds: 30,
+  liveSource: 'tikfinity',
+  tikfinityUrl: 'ws://localhost:21213/',
   fuelRangeMeters: 300,
   emptySpeedPercent: 10,
   cruiseSpeed: 8,

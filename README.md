@@ -1,9 +1,25 @@
 # 🚙 Hediye Rallisi — TikTok etkileşimli 2D araba oyunu
 
-TikTok canlı yayınında izleyicilerin gönderdiği **hediye, beğeni, takip, paylaşım ve
-sohbet komutları** oyundaki araca etki eder: boost, roketle ileri fırlatma, bomba ile
-takla attırarak geri gönderme, teker patlatma, araç/harita değiştirme ve daha fazlası.
-Hedef, aracı **0'dan ayarlanan mesafeye** (varsayılan 1000 m) ulaştırmak.
+Aracı yayıncı **klavyeyle** sürer; TikTok canlı yayınındaki izleyicilerin gönderdiği
+**hediye, beğeni, takip, paylaşım ve sohbet komutları** (TikFinity üzerinden) araca etki eder:
+boost, roketle ileri fırlatma, bomba ile takla attırarak geri gönderme, teker patlatma,
+araç/harita değiştirme ve daha fazlası.
+
+## Kurallar
+
+- Araç **0** noktasından başlar. Hedef ayarlanabilir (varsayılan **1000**).
+- **+1000**'i geçince **15 sn kazanma geri sayımı** başlar. Bu sürede izleyiciler seni
+  +1000'in gerisine atamazsa otomatik **kazanırsın**, kazanma puanı (🏆) bir artar.
+- Geriye de gidilebilir; **−1000 ve ötesi sınırsız**. **−1000'in gerisine** düşersen
+  **15 sn kaybetme geri sayımı** başlar. Bu sürede −999'a geri dönemezsen **kaybedersin** (💀 +1).
+- Patlama oyunu bitirmez; araç birkaç saniye sonra yeniden doğar.
+- Benzin bitince araç durmaz, çok yavaşlar. Benzin yalnızca gaza basarken harcanır.
+- Araç **3 sn** ters kalırsa kendiliğinden düzelir.
+- **Büyük hediye** (varsayılan ≥ 99 elmas) gönderenin profil fotoğrafı **30 sn** yolcu koltuğunda oturur.
+- Aynı türden gelen eylemler birleşir (ör. üst üste 5 Nitro → tek, uzun bir Nitro).
+  **Yüksek elmaslı hediyeler kuyruğun önüne geçer.**
+
+Süreler, mesafeler ve elmas sınırı panelin **Ayarlar** sekmesinden değiştirilebilir.
 
 Proje planı ve fikirler için: **[PLAN.md](PLAN.md)**
 
@@ -21,18 +37,27 @@ npm start
 
 ### TikTok Live Studio / OBS'e ekleme
 
-Oyun ekranını (`http://localhost:3000/`) **Tarayıcı kaynağı** olarak ekleyin
-(dikey yayın için 1080×1920 önerilir). Paneli ayrı bir pencerede/ikinci ekranda açın;
-paneldeki her değişiklik oyuna anında yansır.
+Aracı klavyeyle süreceğiniz için oyunu **normal bir tarayıcı penceresinde** (Chrome/Edge)
+açın ve Live Studio/OBS'te **pencere yakalama** ile yayına ekleyin; klavye tuşları
+odaklanmış pencereye gider. Dikey yayın için pencereyi dikey boyutlandırın.
+Paneli ayrı bir pencerede/ikinci ekranda açın; paneldeki her değişiklik oyuna anında yansır.
 
-### TikTok'a bağlanma
+Port 3000 doluysa: PowerShell'de `$env:PORT=3050; npm start` (cmd'de `set PORT=3050`).
 
-Panel → **Kontrol** → kullanıcı adınızı girip **Bağlan**'a basın (yayının açık olması gerekir).
-Ya da başlatırken: `TIKTOK_USERNAME=kullaniciadi npm start`.
+### Canlı bağlantı: TikFinity
 
-> Bağlantı resmi olmayan [`tiktok-live-connector`](https://github.com/zerodytrash/TikTok-Live-Connector)
-> kütüphanesiyle yapılır. TikTok tarafındaki değişiklikler bağlantıyı zaman zaman bozabilir;
-> bu durumda `npm update tiktok-live-connector` deneyin.
+1. [TikFinity](https://tikfinity.zerody.one) uygulamasını açın ve yayınınıza bağlayın.
+2. Oyunu başlatın (`npm start`). Oyun TikFinity'nin yerel WebSocket API'sine
+   (`ws://localhost:21213/`) **otomatik bağlanır**. Sağ alttaki yazı **● TikFinity bağlı** olmalı.
+   TikFinity sonradan açılırsa oyun kendiliğinden yeniden dener.
+3. Adres farklıysa: Panel → **Kontrol** → *Canlı yayın bağlantısı* bölümünden değiştirin.
+
+Alternatif olarak TikFinity'nin "Actions & Events" bölümünde Webhook ile doğrudan eylem
+tetikleyebilirsiniz: `http://localhost:3000/api/trigger?action=nitro&user={nickname}`
+(`action` = eylem adı: `boost`, `nitro`, `bomb`, `rocket`, `explode`, `popTire` …).
+
+TikFinity olmadan doğrudan TikTok'a bağlanmak da mümkün: panelde kaynağı **Doğrudan TikTok**
+yapıp kullanıcı adınızı girin (resmi olmayan `tiktok-live-connector` kütüphanesi kullanılır).
 
 ## Masaüstündeki klasörleri kullanma
 
@@ -77,12 +102,18 @@ Ayarlar `data/config.json` dosyasına kaydedilir; panelden JSON olarak yedekleni
 
 | Tuş | İşlev |
 |---|---|
-| P / Boşluk | Durdur / devam |
+| → / D | Gaz (ileri) |
+| ← / A | Geri |
+| ↑ / W | Geriye eğil (havada geri takla) |
+| ↓ / S | Öne eğil (havada ön takla) |
+| P | Durdur / devam |
 | Shift+R | Yeniden başlat |
 | F2 / Tab | Paneli aç/kapat |
 | H | Arayüzü gizle |
 | 1–9, 0 | Boost, Nitro, Zıpla, Roket, Bomba, Teker, Patlat, Araç, Harita, Benzin |
-| M, S, T, E, Q | Füze, Kalkan, Hortum, Meteor, Işınla |
+| M, K, T, E, Q | Füze, Kalkan, Hortum, Meteor, Işınla |
+
+Araç kontrolü panelden **Otomatik** yapılırsa araç kendi kendine ilerler.
 
 ## Fizik testi
 
@@ -97,7 +128,7 @@ Her araç her haritada 40 sn kendi kendine sürülür; ilerleme, ters dönme ve 
 
 ```
 server/index.js      Express + WebSocket sunucusu, ayar kaydı, varlık listesi
-server/tiktok.js     TikTok LIVE bağlantısı, olayları sadeleştirme, hediye serisi (streak) hesabı
+server/tiktok.js     TikFinity ve doğrudan TikTok bağlantısı, olay sadeleştirme, hediye serisi (streak) hesabı
 public/index.html    Oyun ekranı
 public/panel.html    Yayıncı paneli
 public/js/

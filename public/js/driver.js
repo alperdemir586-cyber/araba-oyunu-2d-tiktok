@@ -267,3 +267,76 @@ export class Driver {
     ctx.beginPath(); ctx.arc(0.11, 0.14, 0.01, 0, Math.PI * 2); ctx.fill();
   }
 }
+
+// Yolcu: büyük hediye gönderen izleyici. Yüzü izleyicinin profil fotoğrafıdır.
+// p = { user, img, t, max }  — sürücünün yay hareketini (sarsıntı) biraz gecikmeli paylaşır.
+export function drawPassenger(ctx, def, p, driver, time) {
+  const sc = (def.driverScale || 1) * 0.95;
+  const [px, py] = def.passenger || [def.seat[0] - 0.55, def.seat[1]];
+  const fadeIn = Math.min(1, (p.max - p.t) / 0.4);
+  const ending = p.t < 3 ? 0.55 + 0.45 * Math.abs(Math.sin(time * 6)) : 1; // bitmeden önce yanıp söner
+  ctx.save();
+  ctx.globalAlpha *= fadeIn * ending;
+  ctx.translate(px, py);
+  ctx.scale(sc, sc);
+  const ox = driver.ox * 1.25 + Math.sin(time * 3.1) * 0.006, oy = driver.oy * 1.2;
+  const shoulder = [0.07 + ox * 0.4, 0.6 + oy * 0.3]; // arka koltukta biraz yüksekte
+  const head = [shoulder[0] + ox * 0.7 + 0.03, shoulder[1] + 0.27 + oy * 0.5];
+
+  // gövde (kapüşonlu)
+  ctx.fillStyle = '#ff4f8b';
+  ctx.strokeStyle = 'rgba(20,16,24,0.9)';
+  ctx.lineWidth = 0.035;
+  ctx.beginPath();
+  ctx.moveTo(-0.17, -0.02);
+  ctx.quadraticCurveTo(-0.2, 0.3, -0.12, 0.53);
+  ctx.quadraticCurveTo(0.02, 0.62, 0.15, 0.5);
+  ctx.quadraticCurveTo(0.2, 0.25, 0.17, -0.02);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#d63a72';
+  ctx.beginPath(); ctx.ellipse(0.0, 0.25, 0.08, 0.05, 0, 0, Math.PI * 2); ctx.fill();
+
+  // sallanan el (selam veriyor)
+  const wave = Math.sin(time * 7) * 0.12;
+  const hand = [shoulder[0] + 0.3, shoulder[1] + 0.32 + wave * 0.3];
+  const elbow = [shoulder[0] + 0.22, shoulder[1] + 0.05];
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(20,16,24,0.9)'; ctx.lineWidth = 0.11;
+  ctx.beginPath(); ctx.moveTo(...shoulder); ctx.lineTo(...elbow); ctx.lineTo(hand[0] + wave * 0.2, hand[1]); ctx.stroke();
+  ctx.strokeStyle = '#ff4f8b'; ctx.lineWidth = 0.08;
+  ctx.beginPath(); ctx.moveTo(...shoulder); ctx.lineTo(...elbow); ctx.lineTo(hand[0] + wave * 0.2, hand[1]); ctx.stroke();
+  ctx.fillStyle = '#f2c39b';
+  ctx.beginPath(); ctx.arc(hand[0] + wave * 0.2, hand[1], 0.055, 0, Math.PI * 2); ctx.fill();
+
+  // boyun
+  ctx.strokeStyle = '#d99e74'; ctx.lineWidth = 0.09;
+  ctx.beginPath(); ctx.moveTo(...shoulder); ctx.lineTo(head[0], head[1] - 0.14); ctx.stroke();
+
+  // kafa = profil fotoğrafı
+  const R = 0.23;
+  ctx.save();
+  ctx.translate(head[0], head[1]);
+  ctx.rotate(-(ox * 1.6));
+  ctx.fillStyle = '#ffd23f';
+  ctx.beginPath(); ctx.arc(0, 0, R + 0.035, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.clip();
+  const img = p.img;
+  if (img && img.complete && img.naturalWidth) {
+    ctx.scale(1, -1);
+    ctx.drawImage(img, -R, -R, R * 2, R * 2);
+  } else {
+    const name = p.user.nickname || '?';
+    let hsh = 0;
+    for (let i = 0; i < name.length; i++) hsh = (hsh * 31 + name.charCodeAt(i)) | 0;
+    ctx.fillStyle = `hsl(${Math.abs(hsh) % 360},70%,55%)`;
+    ctx.fillRect(-R, -R, R * 2, R * 2);
+    ctx.scale(R / 20, -R / 20);
+    ctx.font = '900 26px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#fff';
+    ctx.fillText((name[0] || '?').toUpperCase(), 0, 2);
+  }
+  ctx.restore();
+  ctx.restore();
+}

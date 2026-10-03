@@ -33,7 +33,14 @@ export class Hud {
       win: $('#win'),
       conn: $('#conn'),
       timer: $('#timer'),
+      loseLabel: $('#lose-label'),
+      scoreW: $('#score .w'),
+      scoreL: $('#score .l'),
+      cd: $('#countdown'),
+      cdLbl: $('#countdown .lbl'),
+      cdNum: $('#countdown .num'),
     };
+    this.lastCd = '';
     this.acc = 0;
     this.lastQueueKey = '';
     this.lastLeadersKey = '';
@@ -48,22 +55,40 @@ export class Hud {
 
   setConnection(status) {
     const c = this.el.conn;
+    const src = status.source === 'tiktok' ? 'TikTok' : 'TikFinity';
     if (status.connected) {
-      c.textContent = `● TikTok: @${status.username}`;
+      c.textContent = `● ${src} bağlı${status.username ? ': @' + status.username : ''}`;
       c.className = 'ok';
     } else {
-      c.textContent = status.username ? `○ TikTok: ${status.error || 'bağlı değil'}` : '○ TikTok bağlı değil (panelden bağlan)';
+      c.textContent = `○ ${src}: ${status.error || 'bağlı değil'}`;
       c.className = 'off';
     }
   }
 
   update(g) {
     const s = g.settings;
+    // Bar: solda -hedef (kaybetme), ortada 0, sağda +hedef (kazanma)
     const target = Math.max(1, s.targetMeters);
-    const d = Math.max(0, g.vehicle.pos.x);
-    const pct = Math.min(1, d / target);
-    this.el.fill.style.width = `${pct * 100}%`;
+    const d = g.mode === 'dead' ? g.respawnX : g.vehicle.pos.x;
+    const pct = Math.min(1, Math.max(0, (d + target) / (2 * target)));
+    this.el.fill.style.left = `${Math.min(pct, 0.5) * 100}%`;
+    this.el.fill.style.width = `${Math.abs(pct - 0.5) * 100}%`;
+    this.el.fill.classList.toggle('neg', d < 0);
     this.el.car.style.left = `${pct * 100}%`;
+    // geri sayım
+    const cd = g.countdown;
+    const cdKey = cd ? cd.type + Math.ceil(cd.t) : '';
+    if (cdKey !== this.lastCd) {
+      this.lastCd = cdKey;
+      this.el.cd.className = cd ? 'show ' + cd.type : '';
+      if (cd) {
+        this.el.cdLbl.textContent = cd.type === 'win' ? '🏁 KAZANMAYA' : '💀 KAYBETMEYE';
+        this.el.cdNum.textContent = Math.max(0, Math.ceil(cd.t));
+        this.el.cdNum.classList.remove('pulse');
+        void this.el.cdNum.offsetWidth;
+        this.el.cdNum.classList.add('pulse');
+      }
+    }
     this.el.fuelFill.style.width = `${g.fuel}%`;
     this.el.fuelFill.style.background = g.fuel > 50 ? '#3ddc84' : g.fuel > 20 ? '#ffc93c' : '#ff4d4d';
     this.el.fuel.classList.toggle('empty', g.fuel <= 0);
@@ -71,8 +96,11 @@ export class Hud {
 
     this.acc++;
     if (this.acc % 6) return; // DOM metinlerini ~10Hz güncelle
-    this.el.dist.textContent = `${Math.floor(d)} m`;
-    this.el.target.textContent = `/ ${target} m`;
+    this.el.dist.textContent = `${d < 0 ? '−' : ''}${Math.abs(Math.trunc(d))} m`;
+    this.el.target.textContent = `+${target} 🏁`;
+    this.el.loseLabel.textContent = `💀 −${target}`;
+    this.el.scoreW.textContent = `🏆 ${g.score.wins}`;
+    this.el.scoreL.textContent = `💀 ${g.score.losses}`;
     this.el.fuelText.textContent = `%${Math.ceil(g.fuel)}`;
     this.el.timer.textContent = `⏱ ${fmtTime(g.elapsed)}  ·  Tur ${g.round}`;
 
@@ -131,7 +159,7 @@ export class Hud {
       if (key !== this.lastMarkersKey) {
         this.lastMarkersKey = key;
         this.el.markers.innerHTML = g.markers.slice(-8).map((m) => {
-          const left = Math.min(100, Math.max(0, (m.x / target) * 100));
+          const left = Math.min(100, Math.max(0, ((m.x + target) / (2 * target)) * 100));
           return `<span class="mk ${m.delta >= 0 ? 'up' : 'down'}" style="left:${left}%">${m.icon}<i>${m.delta > 0 ? '+' : ''}${Math.round(m.delta)}</i></span>`;
         }).join('');
       }
@@ -169,12 +197,14 @@ export class Hud {
     setTimeout(() => div.remove(), small ? 2400 : 3200);
   }
 
-  showWin(g) {
+  showEnd(g, type) {
     const top = [...g.leaders.values()].sort((a, b) => b.coins - a.coins || b.actions - a.actions).slice(0, 5);
+    const win = type === 'win';
     this.el.win.innerHTML = `
-      <div class="box">
-        <div class="t">🏁 HEDEFE ULAŞILDI!</div>
-        <div class="s">${g.settings.targetMeters} m · ${fmtTime(g.elapsed)}</div>
+      <div class="box ${win ? 'win' : 'lose'}">
+        <div class="t">${win ? '🏆 KAZANDIN!' : '💀 KAYBETTİN!'}</div>
+        <div class="s">${win ? '+' : '−'}${g.settings.targetMeters} m · ${fmtTime(g.elapsed)}</div>
+        <div class="s">🏆 Kazanma: <b>${g.score.wins}</b> · 💀 Kaybetme: <b>${g.score.losses}</b></div>
         ${top.length ? `<div class="list">${top.map((l, i) => `<div class="row">${['🥇', '🥈', '🥉', '4.', '5.'][i]} ${avatarHtml(l.user)} <span class="nm">${esc(l.user.nickname)}</span><b>${l.coins}💎</b></div>`).join('')}</div>` : ''}
         ${g.settings.autoRestartSeconds > 0 ? `<div class="s small">${g.settings.autoRestartSeconds} sn sonra yeni tur…</div>` : ''}
       </div>`;

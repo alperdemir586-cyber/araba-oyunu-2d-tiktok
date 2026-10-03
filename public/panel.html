@@ -24,14 +24,23 @@
     <!-- KONTROL -->
     <section id="tab-control" class="tab active">
       <div class="card">
-        <h3>TikTok LIVE bağlantısı</h3>
-        <div class="row">
+        <h3>Canlı yayın bağlantısı</h3>
+        <div class="row wrap">
+          <select id="live-source">
+            <option value="tikfinity">TikFinity (önerilen)</option>
+            <option value="tiktok">Doğrudan TikTok</option>
+          </select>
+          <input id="tf-url" placeholder="ws://localhost:21213/" autocomplete="off">
           <input id="tt-user" placeholder="@kullaniciadi" autocomplete="off">
           <button id="tt-connect">Bağlan</button>
           <button id="tt-disconnect" class="ghost">Kes</button>
         </div>
         <div id="tt-status" class="muted">Bağlı değil</div>
-        <p class="hint">Yayın açıkken kullanıcı adınızı girin. Hediye/beğeni/takip olayları otomatik olarak kurallara iletilir.</p>
+        <p class="hint" id="tf-hint">TikFinity uygulamasını açıp yayınınıza bağlayın; oyun TikFinity'nin yerel WebSocket API'sine
+          (<code>ws://localhost:21213/</code>) bağlanır ve olaylar kurallara iletilir. Sunucu açılınca otomatik bağlanır, TikFinity
+          kapanırsa kendiliğinden yeniden dener.</p>
+        <p class="hint">Alternatif: TikFinity'de bir eylem için Webhook olarak
+          <code id="hook-url">http://localhost:3000/api/trigger?action=nitro&amp;user={nickname}</code> çağırabilirsiniz.</p>
       </div>
       <div class="card">
         <h3>Oyun durumu</h3>
@@ -40,6 +49,7 @@
           <button data-cmd="togglePause">⏯ Durdur / Devam</button>
           <button data-cmd="restart">🔄 Yeniden başlat</button>
           <button data-cmd="clearQueue" class="ghost">🧹 Kuyruğu temizle</button>
+          <button id="reset-score" class="ghost danger">Skoru sıfırla</button>
           <button id="fill-fuel" class="ghost">⛽ Benzini doldur</button>
         </div>
       </div>
@@ -49,9 +59,10 @@
       </div>
       <div class="card">
         <h3>Kısayollar (oyun ekranında)</h3>
-        <p class="hint">P/Boşluk: durdur · Shift+R: yeniden başlat · F2/Tab: panel · H: arayüzü gizle ·
-          1 Boost · 2 Nitro · 3 Zıpla · 4 Roket · 5 Bomba · 6 Teker · 7 Patlat · 8 Araç · 9 Harita · 0 Benzin ·
-          M Füze · S Kalkan · T Hortum · E Meteor · Q Işınla</p>
+        <p class="hint"><b>Sürüş:</b> → / D gaz · ← / A geri · ↑ / W geriye eğil · ↓ / S öne eğil (havada takla kontrolü)<br>
+          P: durdur · Shift+R: yeniden başlat · F2/Tab: panel · H: arayüzü gizle<br>
+          Test: 1 Boost · 2 Nitro · 3 Zıpla · 4 Roket · 5 Bomba · 6 Teker · 7 Patlat · 8 Araç · 9 Harita · 0 Benzin ·
+          M Füze · K Kalkan · T Hortum · E Meteor · Q Işınla</p>
       </div>
     </section>
 
