@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hediye Rallisi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <div id="hud">
+    <div id="top">
+      <div id="progress">
+        <div class="track">
+          <div class="fill"></div>
+          <div class="markers"></div>
+          <div class="car">🚙</div>
+          <div class="flag">🏁</div>
+        </div>
+        <div class="labels"><span id="dist">0 m</span><span id="target">/ 1000 m</span></div>
+      </div>
+      <div class="row2">
+        <div id="fuel"><span class="icon">⛽</span><div class="bar"><div class="fill"></div></div><span class="pct">%100</span></div>
+        <div id="timer"></div>
+      </div>
+      <div id="status-icons"></div>
+    </div>
+    <div id="leaders"></div>
+    <div id="queue" class="empty"><h4>Sıradaki</h4><ul></ul></div>
+    <div id="feed"></div>
+    <div id="announce"></div>
+    <div id="pause">⏸ DURAKLATILDI</div>
+    <div id="win"></div>
+    <div id="conn" class="off">○ TikTok bağlı değil</div>
+  </div>
+  <button id="panel-btn" title="Yayıncı paneli (F2)">⚙</button>
+  <iframe id="panel-frame" hidden title="Yayıncı paneli"></iframe>
+  <script src="/vendor/planck.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

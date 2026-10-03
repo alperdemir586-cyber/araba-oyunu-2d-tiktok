@@ -1,0 +1,29 @@
+{
+  "name": "araba-oyunu-2d-tiktok",
+  "version": "0.1.0",
+  "description": "TikTok canlı yayın hediyeleriyle etkileşimli 2D araba oyunu",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "check": "node scripts/check.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alperdemir586-cyber/araba-oyunu-2d-tiktok.git"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/alperdemir586-cyber/araba-oyunu-2d-tiktok/issues"
+  },
+  "homepage": "https://github.com/alperdemir586-cyber/araba-oyunu-2d-tiktok#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "planck": "^1.5.0",
+    "tiktok-live-connector": "^2.5.0",
+    "ws": "^8.22.0"
+  },
+  "type": "module",
+  "private": true
+}

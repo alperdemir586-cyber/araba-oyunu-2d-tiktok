@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Yayıncı Paneli</title>
+  <link rel="stylesheet" href="css/panel.css">
+</head>
+<body>
+  <header>
+    <div class="brand">🎮 Yayıncı Paneli</div>
+    <div id="save-state" class="muted">—</div>
+    <button id="close-panel" class="ghost" hidden title="Kapat">✕</button>
+  </header>
+  <nav id="tabs">
+    <button data-tab="control" class="active">Kontrol</button>
+    <button data-tab="rules">Kurallar</button>
+    <button data-tab="test">Test</button>
+    <button data-tab="settings">Ayarlar</button>
+    <button data-tab="visuals">Görseller</button>
+  </nav>
+
+  <main>
+    <!-- KONTROL -->
+    <section id="tab-control" class="tab active">
+      <div class="card">
+        <h3>TikTok LIVE bağlantısı</h3>
+        <div class="row">
+          <input id="tt-user" placeholder="@kullaniciadi" autocomplete="off">
+          <button id="tt-connect">Bağlan</button>
+          <button id="tt-disconnect" class="ghost">Kes</button>
+        </div>
+        <div id="tt-status" class="muted">Bağlı değil</div>
+        <p class="hint">Yayın açıkken kullanıcı adınızı girin. Hediye/beğeni/takip olayları otomatik olarak kurallara iletilir.</p>
+      </div>
+      <div class="card">
+        <h3>Oyun durumu</h3>
+        <div id="state" class="state-grid"><span class="muted">Oyun ekranı açık değil…</span></div>
+        <div class="row wrap">
+          <button data-cmd="togglePause">⏯ Durdur / Devam</button>
+          <button data-cmd="restart">🔄 Yeniden başlat</button>
+          <button data-cmd="clearQueue" class="ghost">🧹 Kuyruğu temizle</button>
+          <button id="fill-fuel" class="ghost">⛽ Benzini doldur</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Kuyruk</h3>
+        <ol id="queue-list" class="queue"></ol>
+      </div>
+      <div class="card">
+        <h3>Kısayollar (oyun ekranında)</h3>
+        <p class="hint">P/Boşluk: durdur · Shift+R: yeniden başlat · F2/Tab: panel · H: arayüzü gizle ·
+          1 Boost · 2 Nitro · 3 Zıpla · 4 Roket · 5 Bomba · 6 Teker · 7 Patlat · 8 Araç · 9 Harita · 0 Benzin ·
+          M Füze · S Kalkan · T Hortum · E Meteor · Q Işınla</p>
+      </div>
+    </section>
+
+    <!-- KURALLAR -->
+    <section id="tab-rules" class="tab">
+      <div class="row wrap">
+        <button id="add-rule">➕ Kural ekle</button>
+        <button id="reset-rules" class="ghost">Varsayılan kurallar</button>
+        <span class="muted">Hediye adları TikTok'taki İngilizce adlarla eşleşir (ör. Rose, Finger Heart). Hediye ID'si de yazılabilir.</span>
+      </div>
+      <div id="rules"></div>
+      <datalist id="gift-names"></datalist>
+      <details class="card">
+        <summary>🎁 Hediye listesi (klasör + TikTok)</summary>
+        <div id="gift-grid" class="gift-grid"></div>
+      </details>
+    </section>
+
+    <!-- TEST -->
+    <section id="tab-test" class="tab">
+      <div class="card">
+        <h3>Hediye simülasyonu</h3>
+        <div class="row wrap">
+          <input id="sim-gift" list="gift-names" placeholder="Hediye adı (Rose)" value="Rose">
+          <input id="sim-count" type="number" min="1" value="1" style="width:5em">
+          <input id="sim-user" placeholder="Kullanıcı" value="izleyici1">
+          <button id="sim-send">🎁 Gönder</button>
+        </div>
+        <div class="row wrap">
+          <button data-sim="like">❤️ 15 beğeni</button>
+          <button data-sim="follow">➕ Takip</button>
+          <button data-sim="share">🔗 Paylaşım</button>
+          <button data-sim="subscribe">⭐ Abonelik</button>
+          <button data-sim="chat">💬 Sohbet "!zıpla"</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Stres testi</h3>
+        <div class="row wrap">
+          <button data-stress="likes">❤️ 50 beğeni olayı (aynı anda)</button>
+          <button data-stress="explode">💥 10 patlatma üst üste</button>
+          <button data-stress="mixed">🎲 100 karışık hediye</button>
+          <button data-stress="crowd">👥 20 kişi aynı anda</button>
+          <button data-stress="bad">😈 Tüm sabotajlar</button>
+        </div>
+        <p class="hint">Kuyruk sistemi işleri önceliğe göre sıralar; aynı tip Boost/Benzin gibi eylemler birleştirilir, uçuş/patlama gibi özel eylemler sırayla çalışır.</p>
+      </div>
+      <div class="card">
+        <h3>Eylemleri tek tek dene</h3>
+        <div id="action-buttons"></div>
+      </div>
+    </section>
+
+    <!-- AYARLAR -->
+    <section id="tab-settings" class="tab">
+      <div id="settings" class="card form"></div>
+      <div class="card">
+        <h3>Yedekle / Geri yükle</h3>
+        <div class="row wrap">
+          <button id="export">⬇️ Ayarları indir (JSON)</button>
+          <label class="btn ghost">⬆️ Yükle<input id="import" type="file" accept=".json" hidden></label>
+          <button id="factory" class="danger">Fabrika ayarları</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- GÖRSELLER -->
+    <section id="tab-visuals" class="tab">
+      <div class="card">
+        <h3>Harita görselleri</h3>
+        <p class="hint">Dosyaları <code>assets/backgrounds</code> ve <code>assets/ground</code> klasörlerine koyun. Boş bırakılırsa çizilmiş varsayılan görünüm kullanılır.</p>
+        <div id="map-visuals"></div>
+      </div>
+      <div class="card">
+        <h3>Özel araçlar (assets/cars)</h3>
+        <p class="hint">Her görsel bir araç olarak eklenebilir. Tekerlek konumlarını ve sürücü koltuğunu önizlemeden ayarlayın. Camı açık (üstü açık) araçlarda sürücü görünür.</p>
+        <div id="custom-cars"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/panel.js"></script>
+</body>
+</html>
