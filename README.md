@@ -32,8 +32,8 @@ npm install
 npm start
 ```
 
-- Oyun ekranı: <http://localhost:3000/>
-- Yayıncı paneli: <http://localhost:3000/panel.html> (oyun ekranında **F2** ile de açılır)
+- Oyun ekranı: <http://localhost:3456/>
+- Yayıncı paneli: <http://localhost:3456/panel.html> (oyun ekranında **F2** ile de açılır)
 
 ### TikTok Live Studio / OBS'e ekleme
 
@@ -42,7 +42,7 @@ açın ve Live Studio/OBS'te **pencere yakalama** ile yayına ekleyin; klavye tu
 odaklanmış pencereye gider. Dikey yayın için pencereyi dikey boyutlandırın.
 Paneli ayrı bir pencerede/ikinci ekranda açın; paneldeki her değişiklik oyuna anında yansır.
 
-Port 3000 doluysa: PowerShell'de `$env:PORT=3050; npm start` (cmd'de `set PORT=3050`).
+Port 3456 doluysa başka bir port seçin: PowerShell'de `$env:PORT=3460; npm start` (cmd'de `set PORT=3460`).
 
 ### Canlı bağlantı: TikFinity
 
@@ -53,7 +53,7 @@ Port 3000 doluysa: PowerShell'de `$env:PORT=3050; npm start` (cmd'de `set PORT=3
 3. Adres farklıysa: Panel → **Kontrol** → *Canlı yayın bağlantısı* bölümünden değiştirin.
 
 Alternatif olarak TikFinity'nin "Actions & Events" bölümünde Webhook ile doğrudan eylem
-tetikleyebilirsiniz: `http://localhost:3000/api/trigger?action=nitro&user={nickname}`
+tetikleyebilirsiniz: `http://localhost:3456/api/trigger?action=nitro&user={nickname}`
 (`action` = eylem adı: `boost`, `nitro`, `bomb`, `rocket`, `explode`, `popTire` …).
 
 TikFinity olmadan doğrudan TikTok'a bağlanmak da mümkün: panelde kaynağı **Doğrudan TikTok**

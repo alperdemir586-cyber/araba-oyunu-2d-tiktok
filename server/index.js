@@ -10,7 +10,7 @@ import { TikTokBridge, TikFinityBridge } from './tiktok.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.PORT || 3456);
 const DATA_DIR = path.join(ROOT, 'data');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 
@@ -120,7 +120,7 @@ function liveDisconnect() {
 }
 
 // TikFinity'nin "Webhook" eylemi veya başka araçlar için basit tetikleyici:
-//   http://localhost:3000/api/trigger?action=nitro&user=ali&count=2
+//   http://localhost:3456/api/trigger?action=nitro&user=ali&count=2
 app.all('/api/trigger', (req, res) => {
   const q = { ...req.query, ...(typeof req.body === 'object' ? req.body : {}) };
   if (!q.action) return res.status(400).json({ ok: false, error: 'action gerekli' });
@@ -160,6 +160,15 @@ wss.on('connection', (ws) => {
         broadcast(msg, ws);
     }
   });
+});
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n  Port ${PORT} başka bir program tarafından kullanılıyor.`);
+    console.error(`  Başka bir portla başlatın, örn. PowerShell: $env:PORT=${PORT + 4}; npm start\n`);
+    process.exit(1);
+  }
+  throw err;
 });
 
 server.listen(PORT, () => {
